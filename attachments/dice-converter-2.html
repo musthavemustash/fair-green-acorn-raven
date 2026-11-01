@@ -1,0 +1,450 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dice converter · Plebum Dominium</title>
+<style>
+:root{
+  --bg:#0e0d0b; --panel:#161310; --panel2:#1c1814; --ink:#ece5d8; --muted:#a89c88;
+  --copper:#c4a484; --copper-dim:#7a5a34; --line:#2b251c; --good:#7fb069; --bad:#c46a5a;
+}
+*{box-sizing:border-box}
+.topbar{max-width:760px;margin:0 auto;padding:18px 20px 0;display:flex;justify-content:flex-end}
+.online-pill{display:inline-flex;align-items:center;gap:8px;font-size:14px;color:var(--muted);white-space:nowrap}
+.online-pill[hidden]{display:none}
+.online-dot{width:12px;height:12px;border-radius:50%;background:#e07856;flex-shrink:0}
+.online-dot.safe{background:#3aa655}
+#netblock{position:fixed;inset:0;background:rgba(14,13,11,.97);z-index:50;
+  display:flex;align-items:center;justify-content:center;padding:24px}
+#netblock[hidden]{display:none}
+.stopcard{max-width:560px;background:var(--panel);border:1px solid #5a2a22;border-radius:14px;padding:28px}
+.stopcard h2{font-family:Newsreader,Georgia,serif;color:#e0a396;margin:0 0 10px;font-size:28px;font-weight:600}
+.stopcard p{color:var(--muted);margin:10px 0}
+.stopcard .prow{margin-bottom:6px}
+.dl-guide{margin-top:18px;padding-top:16px;border-top:1px solid #3a2f28}
+.dl-guide p{margin:8px 0}
+a.dl-btn{display:inline-block;background:var(--copper);color:#14100b;border-radius:10px;
+  padding:10px 20px;font-size:15px;font-weight:700;text-decoration:none}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font-family:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;line-height:1.55}
+.top{max-width:760px;margin:0 auto;padding:40px 20px 8px}
+.kicker{color:var(--copper);letter-spacing:.18em;text-transform:uppercase;font-size:12px;margin:0 0 8px}
+h1{font-family:Newsreader,Georgia,serif;font-weight:600;font-size:40px;margin:0 0 8px}
+.sub{color:var(--muted);margin:0}
+main{max-width:760px;margin:0 auto;padding:8px 20px 40px}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;
+  padding:22px 22px 24px;margin:22px 0}
+.panel h2{font-family:Newsreader,Georgia,serif;font-weight:600;font-size:24px;margin:0 0 6px}
+.step{display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;
+  border:1px solid var(--copper-dim);border-radius:50%;color:var(--copper);
+  font-size:15px;margin-right:10px;vertical-align:2px}
+.panel p{color:var(--muted);margin:8px 0}
+.panel p strong{color:var(--ink)}
+.legend{display:flex;gap:14px;flex-wrap:wrap;margin:14px 0 4px;font-size:14px;color:var(--muted)}
+.legend b{color:var(--copper);font-family:"IBM Plex Mono",ui-monospace,monospace;font-weight:600}
+.diebtns{display:flex;gap:10px;margin:14px 0;flex-wrap:wrap}
+.diebtn{width:64px;height:64px;font-size:26px;font-weight:700;border-radius:12px;cursor:pointer;
+  background:var(--panel2);color:var(--ink);border:1px solid var(--copper-dim);
+  transition:transform .12s ease, border-color .12s ease}
+.diebtn:hover{border-color:var(--copper);transform:translateY(-2px)}
+.diebtn:active{transform:translateY(1px) scale(.97)}
+.meters{display:flex;gap:22px;align-items:center;flex-wrap:wrap;margin:6px 0 4px;font-size:15px;color:var(--muted)}
+.meters strong{color:var(--ink);font-size:19px;font-variant-numeric:tabular-nums}
+.bar{flex:1 1 160px;height:10px;background:var(--panel2);border:1px solid var(--line);border-radius:6px;overflow:hidden}
+#barfill{height:100%;width:0%;background:linear-gradient(90deg,var(--copper-dim),var(--copper));
+  border-radius:6px;transition:width .35s ease}
+.strip{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0;min-height:58px}
+.tile{width:52px;height:58px;border:1px solid var(--copper-dim);border-radius:10px;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  background:var(--panel2);animation:pop .38s ease}
+.tile .face{font-size:22px;font-weight:700;line-height:1}
+.tile .tb{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:12px;color:var(--copper);margin-top:2px}
+.tile.skip{opacity:.38;border-style:dashed}
+.tile.skip .tb{color:var(--muted)}
+@keyframes pop{0%{transform:scale(.4) rotate(-8deg);opacity:0}60%{transform:scale(1.08) rotate(2deg);opacity:1}100%{transform:scale(1) rotate(0)}}
+.bits{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:13px;color:var(--muted);
+  background:#0b0a08;border:1px solid var(--line);border-radius:10px;padding:12px 14px;
+  min-height:66px;max-height:150px;overflow-y:auto;overflow-wrap:anywhere;line-height:1.7}
+.bits:empty::before{content:"The bits appear here as you enter the rolls.";color:#5c5347}
+.row{display:flex;gap:10px;margin-top:14px;flex-wrap:wrap}
+button.act{background:var(--copper);color:#14100b;border:none;border-radius:10px;
+  padding:10px 20px;font-size:15px;font-weight:700;cursor:pointer}
+button.ghost{background:transparent;color:var(--ink);border:1px solid var(--copper-dim);
+  border-radius:10px;padding:10px 18px;font-size:15px;cursor:pointer}
+button.quiet{background:none;border:none;color:var(--muted);font-size:14px;cursor:pointer;text-decoration:underline}
+.done{background:#12200f;border:1px solid #2c4a24;color:#b8d9a6;border-radius:10px;
+  padding:10px 14px;margin-top:14px}
+.words{list-style:none;margin:16px 0 0;padding:0;display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;counter-reset:w}
+.words li{background:var(--panel2);border:1px solid var(--line);border-radius:8px;
+  padding:8px 10px;font-size:16px;opacity:0;transform:translateY(8px);animation:rise .5s ease forwards}
+.words li .n{color:var(--copper-dim);font-size:12px;margin-right:8px;font-variant-numeric:tabular-nums}
+.words li.check{border-color:var(--copper)}
+.words li.check .tag{display:inline-block;font-size:11px;color:var(--copper);border:1px solid var(--copper-dim);
+  border-radius:20px;padding:1px 8px;margin-left:8px;letter-spacing:.06em}
+@keyframes rise{to{opacity:1;transform:translateY(0)}}
+details{margin-top:16px;border-top:1px solid var(--line);padding-top:12px}
+summary{cursor:pointer;color:var(--copper);font-size:15px}
+textarea{width:100%;min-height:88px;background:#0b0a08;color:var(--ink);
+  border:1px solid var(--line);border-radius:10px;padding:12px 14px;font-size:15px;
+  font-family:"IBM Plex Mono",ui-monospace,monospace;margin-top:10px}
+textarea::placeholder{color:#5c5347}
+.note{font-size:14px;color:var(--muted);margin:8px 0 0}
+.results{list-style:none;margin:14px 0 0;padding:0}
+.results li{padding:10px 14px;border-radius:10px;margin:8px 0;font-size:15px;
+  opacity:0;transform:translateY(6px);animation:rise .45s ease forwards}
+.results li.good{background:#12200f;border:1px solid #2c4a24;color:#b8d9a6}
+.results li.bad{background:#22100d;border:1px solid #5a2a22;color:#e0a396}
+footer{max-width:760px;margin:0 auto;padding:0 20px 48px;color:var(--muted);font-size:14px}
+footer p{margin:6px 0}
+@media (prefers-reduced-motion:reduce){
+  .tile,.words li,.results li{animation:none;opacity:1;transform:none}
+  #barfill{transition:none}
+  .diebtn{transition:none}
+}
+</style>
+</head>
+<body>
+<div class="topbar"><span class="online-pill" id="online-pill" role="status" hidden><span class="online-dot" id="online-dot"></span><span id="online-word">Online</span></span></div>
+<header class="top">
+  <p class="kicker">Plebum Dominium</p>
+  <h1>Dice converter</h1>
+  <p class="sub">Dice rolls become 24 words. Everything happens in this page, offline. Nothing you type leaves it.</p>
+</header>
+<main>
+  <section class="panel" aria-label="Record the rolls">
+    <h2><span class="step">1</span>Record the rolls</h2>
+    <p>Roll five dice. Enter each face left to right, the same way every shake. Faces 1 to 4 are kept as bits. Faces 5 and 6 are skipped, roll those dice again. Stop at 128 pairs.</p>
+    <div class="legend" aria-label="Face values">
+      <span><b>1</b> = 00</span><span><b>2</b> = 01</span><span><b>3</b> = 10</span><span><b>4</b> = 11</span><span><b>5 6</b> = skipped</span>
+    </div>
+    <div class="diebtns" role="group" aria-label="Enter a die face">
+      <button class="diebtn" data-face="1">1</button>
+      <button class="diebtn" data-face="2">2</button>
+      <button class="diebtn" data-face="3">3</button>
+      <button class="diebtn" data-face="4">4</button>
+      <button class="diebtn" data-face="5">5</button>
+      <button class="diebtn" data-face="6">6</button>
+    </div>
+    <div class="meters">
+      <div>Pairs <strong id="m-pairs">0</strong> / 128</div>
+      <div>Bits <strong id="m-bits">0</strong> / 256</div>
+      <div class="bar" aria-hidden="true"><div id="barfill"></div></div>
+    </div>
+    <div class="strip" id="strip" aria-label="Recorded rolls"></div>
+    <div class="bits" id="bits" aria-label="Binary as recorded"></div>
+    <div class="row">
+      <button class="ghost" id="undo">Undo last</button>
+      <button class="ghost" id="clear">Clear all</button>
+      <button class="quiet" id="testfill">Try with test rolls</button>
+    </div>
+    <p class="done" id="done256" hidden>256 bits recorded. The 24 words are below.</p>
+  </section>
+
+  <section class="panel" aria-label="The 24 words">
+    <h2><span class="step">2</span>The 24 words</h2>
+    <p id="words-hint">The words appear when 256 bits are recorded. Word 24 is the check. It is not chosen, and it is never fixed by hand.</p>
+    <ol class="words" id="words"></ol>
+    <details>
+      <summary>Or paste a binary string</summary>
+      <p class="note">The offline Python tool accepts 256 bits or more. Longer input is hashed down to 256. This box does the same.</p>
+      <textarea id="pastebits" placeholder="010011..." spellcheck="false"></textarea>
+      <p class="note" id="paste-note"></p>
+    </details>
+  </section>
+
+  <section class="panel" aria-label="Validate">
+    <h2><span class="step">3</span>Validate</h2>
+    <p>Paste the 24 words from the other tool. Two tools, same bits, same 24 words. The check has to pass and every word has to match. If anything differs, stop.</p>
+    <textarea id="valwords" placeholder="word word word ..." spellcheck="false"></textarea>
+    <div class="row"><button class="act" id="validate">Check these words</button></div>
+    <ul class="results" id="results"></ul>
+  </section>
+</main>
+<div id="netblock" hidden>
+  <div class="stopcard" role="alert">
+    <p class="prow"><span class="online-pill"><span class="online-dot"></span><span>Online</span></span></p>
+    <h2>Stop. This computer is online.</h2>
+    <p>Seed words are never typed on a computer that can reach the network. A connected machine can leak every keystroke to malware, a bad extension, or the network itself. One leak burns the words, and burned words mean new dice, new words, new plates.</p>
+    <p>Close this page. Boot Tails with networking set to Disabled, or disconnect this machine from the network, then open the file again. If this page still says Online on a machine you believe is offline, trust the page. Something is still connected.</p>
+    <div class="dl-guide">
+      <p><strong>Get this file onto your offline machine.</strong></p>
+      <p><a class="dl-btn" href="dice-converter.html" download="dice-converter.html">Download dice-converter.html</a></p>
+      <p>Then check its fingerprint on the verify page, copy it to your data USB, and open it on Tails with networking disabled.</p>
+    </div>
+  </div>
+</div>
+<footer>
+  <p>Before trusting a copy of this file, check its fingerprint against VERIFY.md.</p>
+  <p>Use it offline. Tails with networking disabled is the way this guide does it.</p>
+</footer>
+<script>
+/* Dice converter core: pure functions, no DOM, no network.
+   WORDLIST is injected at build time from the kit Python file. */
+var WORDLIST = ["abandon", "ability", "able", "about", "above", "absent", "absorb", "abstract", "absurd", "abuse", "access", "accident", "account", "accuse", "achieve", "acid", "acoustic", "acquire", "across", "act", "action", "actor", "actress", "actual", "adapt", "add", "addict", "address", "adjust", "admit", "adult", "advance", "advice", "aerobic", "affair", "afford", "afraid", "again", "age", "agent", "agree", "ahead", "aim", "air", "airport", "aisle", "alarm", "album", "alcohol", "alert", "alien", "all", "alley", "allow", "almost", "alone", "alpha", "already", "also", "alter", "always", "amateur", "amazing", "among", "amount", "amused", "analyst", "anchor", "ancient", "anger", "angle", "angry", "animal", "ankle", "announce", "annual", "another", "answer", "antenna", "antique", "anxiety", "any", "apart", "apology", "appear", "apple", "approve", "april", "arch", "arctic", "area", "arena", "argue", "arm", "armed", "armor", "army", "around", "arrange", "arrest", "arrive", "arrow", "art", "artefact", "artist", "artwork", "ask", "aspect", "assault", "asset", "assist", "assume", "asthma", "athlete", "atom", "attack", "attend", "attitude", "attract", "auction", "audit", "august", "aunt", "author", "auto", "autumn", "average", "avocado", "avoid", "awake", "aware", "away", "awesome", "awful", "awkward", "axis", "baby", "bachelor", "bacon", "badge", "bag", "balance", "balcony", "ball", "bamboo", "banana", "banner", "bar", "barely", "bargain", "barrel", "base", "basic", "basket", "battle", "beach", "bean", "beauty", "because", "become", "beef", "before", "begin", "behave", "behind", "believe", "below", "belt", "bench", "benefit", "best", "betray", "better", "between", "beyond", "bicycle", "bid", "bike", "bind", "biology", "bird", "birth", "bitter", "black", "blade", "blame", "blanket", "blast", "bleak", "bless", "blind", "blood", "blossom", "blouse", "blue", "blur", "blush", "board", "boat", "body", "boil", "bomb", "bone", "bonus", "book", "boost", "border", "boring", "borrow", "boss", "bottom", "bounce", "box", "boy", "bracket", "brain", "brand", "brass", "brave", "bread", "breeze", "brick", "bridge", "brief", "bright", "bring", "brisk", "broccoli", "broken", "bronze", "broom", "brother", "brown", "brush", "bubble", "buddy", "budget", "buffalo", "build", "bulb", "bulk", "bullet", "bundle", "bunker", "burden", "burger", "burst", "bus", "business", "busy", "butter", "buyer", "buzz", "cabbage", "cabin", "cable", "cactus", "cage", "cake", "call", "calm", "camera", "camp", "can", "canal", "cancel", "candy", "cannon", "canoe", "canvas", "canyon", "capable", "capital", "captain", "car", "carbon", "card", "cargo", "carpet", "carry", "cart", "case", "cash", "casino", "castle", "casual", "cat", "catalog", "catch", "category", "cattle", "caught", "cause", "caution", "cave", "ceiling", "celery", "cement", "census", "century", "cereal", "certain", "chair", "chalk", "champion", "change", "chaos", "chapter", "charge", "chase", "chat", "cheap", "check", "cheese", "chef", "cherry", "chest", "chicken", "chief", "child", "chimney", "choice", "choose", "chronic", "chuckle", "chunk", "churn", "cigar", "cinnamon", "circle", "citizen", "city", "civil", "claim", "clap", "clarify", "claw", "clay", "clean", "clerk", "clever", "click", "client", "cliff", "climb", "clinic", "clip", "clock", "clog", "close", "cloth", "cloud", "clown", "club", "clump", "cluster", "clutch", "coach", "coast", "coconut", "code", "coffee", "coil", "coin", "collect", "color", "column", "combine", "come", "comfort", "comic", "common", "company", "concert", "conduct", "confirm", "congress", "connect", "consider", "control", "convince", "cook", "cool", "copper", "copy", "coral", "core", "corn", "correct", "cost", "cotton", "couch", "country", "couple", "course", "cousin", "cover", "coyote", "crack", "cradle", "craft", "cram", "crane", "crash", "crater", "crawl", "crazy", "cream", "credit", "creek", "crew", "cricket", "crime", "crisp", "critic", "crop", "cross", "crouch", "crowd", "crucial", "cruel", "cruise", "crumble", "crunch", "crush", "cry", "crystal", "cube", "culture", "cup", "cupboard", "curious", "current", "curtain", "curve", "cushion", "custom", "cute", "cycle", "dad", "damage", "damp", "dance", "danger", "daring", "dash", "daughter", "dawn", "day", "deal", "debate", "debris", "decade", "december", "decide", "decline", "decorate", "decrease", "deer", "defense", "define", "defy", "degree", "delay", "deliver", "demand", "demise", "denial", "dentist", "deny", "depart", "depend", "deposit", "depth", "deputy", "derive", "describe", "desert", "design", "desk", "despair", "destroy", "detail", "detect", "develop", "device", "devote", "diagram", "dial", "diamond", "diary", "dice", "diesel", "diet", "differ", "digital", "dignity", "dilemma", "dinner", "dinosaur", "direct", "dirt", "disagree", "discover", "disease", "dish", "dismiss", "disorder", "display", "distance", "divert", "divide", "divorce", "dizzy", "doctor", "document", "dog", "doll", "dolphin", "domain", "donate", "donkey", "donor", "door", "dose", "double", "dove", "draft", "dragon", "drama", "drastic", "draw", "dream", "dress", "drift", "drill", "drink", "drip", "drive", "drop", "drum", "dry", "duck", "dumb", "dune", "during", "dust", "dutch", "duty", "dwarf", "dynamic", "eager", "eagle", "early", "earn", "earth", "easily", "east", "easy", "echo", "ecology", "economy", "edge", "edit", "educate", "effort", "egg", "eight", "either", "elbow", "elder", "electric", "elegant", "element", "elephant", "elevator", "elite", "else", "embark", "embody", "embrace", "emerge", "emotion", "employ", "empower", "empty", "enable", "enact", "end", "endless", "endorse", "enemy", "energy", "enforce", "engage", "engine", "enhance", "enjoy", "enlist", "enough", "enrich", "enroll", "ensure", "enter", "entire", "entry", "envelope", "episode", "equal", "equip", "era", "erase", "erode", "erosion", "error", "erupt", "escape", "essay", "essence", "estate", "eternal", "ethics", "evidence", "evil", "evoke", "evolve", "exact", "example", "excess", "exchange", "excite", "exclude", "excuse", "execute", "exercise", "exhaust", "exhibit", "exile", "exist", "exit", "exotic", "expand", "expect", "expire", "explain", "expose", "express", "extend", "extra", "eye", "eyebrow", "fabric", "face", "faculty", "fade", "faint", "faith", "fall", "false", "fame", "family", "famous", "fan", "fancy", "fantasy", "farm", "fashion", "fat", "fatal", "father", "fatigue", "fault", "favorite", "feature", "february", "federal", "fee", "feed", "feel", "female", "fence", "festival", "fetch", "fever", "few", "fiber", "fiction", "field", "figure", "file", "film", "filter", "final", "find", "fine", "finger", "finish", "fire", "firm", "first", "fiscal", "fish", "fit", "fitness", "fix", "flag", "flame", "flash", "flat", "flavor", "flee", "flight", "flip", "float", "flock", "floor", "flower", "fluid", "flush", "fly", "foam", "focus", "fog", "foil", "fold", "follow", "food", "foot", "force", "forest", "forget", "fork", "fortune", "forum", "forward", "fossil", "foster", "found", "fox", "fragile", "frame", "frequent", "fresh", "friend", "fringe", "frog", "front", "frost", "frown", "frozen", "fruit", "fuel", "fun", "funny", "furnace", "fury", "future", "gadget", "gain", "galaxy", "gallery", "game", "gap", "garage", "garbage", "garden", "garlic", "garment", "gas", "gasp", "gate", "gather", "gauge", "gaze", "general", "genius", "genre", "gentle", "genuine", "gesture", "ghost", "giant", "gift", "giggle", "ginger", "giraffe", "girl", "give", "glad", "glance", "glare", "glass", "glide", "glimpse", "globe", "gloom", "glory", "glove", "glow", "glue", "goat", "goddess", "gold", "good", "goose", "gorilla", "gospel", "gossip", "govern", "gown", "grab", "grace", "grain", "grant", "grape", "grass", "gravity", "great", "green", "grid", "grief", "grit", "grocery", "group", "grow", "grunt", "guard", "guess", "guide", "guilt", "guitar", "gun", "gym", "habit", "hair", "half", "hammer", "hamster", "hand", "happy", "harbor", "hard", "harsh", "harvest", "hat", "have", "hawk", "hazard", "head", "health", "heart", "heavy", "hedgehog", "height", "hello", "helmet", "help", "hen", "hero", "hidden", "high", "hill", "hint", "hip", "hire", "history", "hobby", "hockey", "hold", "hole", "holiday", "hollow", "home", "honey", "hood", "hope", "horn", "horror", "horse", "hospital", "host", "hotel", "hour", "hover", "hub", "huge", "human", "humble", "humor", "hundred", "hungry", "hunt", "hurdle", "hurry", "hurt", "husband", "hybrid", "ice", "icon", "idea", "identify", "idle", "ignore", "ill", "illegal", "illness", "image", "imitate", "immense", "immune", "impact", "impose", "improve", "impulse", "inch", "include", "income", "increase", "index", "indicate", "indoor", "industry", "infant", "inflict", "inform", "inhale", "inherit", "initial", "inject", "injury", "inmate", "inner", "innocent", "input", "inquiry", "insane", "insect", "inside", "inspire", "install", "intact", "interest", "into", "invest", "invite", "involve", "iron", "island", "isolate", "issue", "item", "ivory", "jacket", "jaguar", "jar", "jazz", "jealous", "jeans", "jelly", "jewel", "job", "join", "joke", "journey", "joy", "judge", "juice", "jump", "jungle", "junior", "junk", "just", "kangaroo", "keen", "keep", "ketchup", "key", "kick", "kid", "kidney", "kind", "kingdom", "kiss", "kit", "kitchen", "kite", "kitten", "kiwi", "knee", "knife", "knock", "know", "lab", "label", "labor", "ladder", "lady", "lake", "lamp", "language", "laptop", "large", "later", "latin", "laugh", "laundry", "lava", "law", "lawn", "lawsuit", "layer", "lazy", "leader", "leaf", "learn", "leave", "lecture", "left", "leg", "legal", "legend", "leisure", "lemon", "lend", "length", "lens", "leopard", "lesson", "letter", "level", "liar", "liberty", "library", "license", "life", "lift", "light", "like", "limb", "limit", "link", "lion", "liquid", "list", "little", "live", "lizard", "load", "loan", "lobster", "local", "lock", "logic", "lonely", "long", "loop", "lottery", "loud", "lounge", "love", "loyal", "lucky", "luggage", "lumber", "lunar", "lunch", "luxury", "lyrics", "machine", "mad", "magic", "magnet", "maid", "mail", "main", "major", "make", "mammal", "man", "manage", "mandate", "mango", "mansion", "manual", "maple", "marble", "march", "margin", "marine", "market", "marriage", "mask", "mass", "master", "match", "material", "math", "matrix", "matter", "maximum", "maze", "meadow", "mean", "measure", "meat", "mechanic", "medal", "media", "melody", "melt", "member", "memory", "mention", "menu", "mercy", "merge", "merit", "merry", "mesh", "message", "metal", "method", "middle", "midnight", "milk", "million", "mimic", "mind", "minimum", "minor", "minute", "miracle", "mirror", "misery", "miss", "mistake", "mix", "mixed", "mixture", "mobile", "model", "modify", "mom", "moment", "monitor", "monkey", "monster", "month", "moon", "moral", "more", "morning", "mosquito", "mother", "motion", "motor", "mountain", "mouse", "move", "movie", "much", "muffin", "mule", "multiply", "muscle", "museum", "mushroom", "music", "must", "mutual", "myself", "mystery", "myth", "naive", "name", "napkin", "narrow", "nasty", "nation", "nature", "near", "neck", "need", "negative", "neglect", "neither", "nephew", "nerve", "nest", "net", "network", "neutral", "never", "news", "next", "nice", "night", "noble", "noise", "nominee", "noodle", "normal", "north", "nose", "notable", "note", "nothing", "notice", "novel", "now", "nuclear", "number", "nurse", "nut", "oak", "obey", "object", "oblige", "obscure", "observe", "obtain", "obvious", "occur", "ocean", "october", "odor", "off", "offer", "office", "often", "oil", "okay", "old", "olive", "olympic", "omit", "once", "one", "onion", "online", "only", "open", "opera", "opinion", "oppose", "option", "orange", "orbit", "orchard", "order", "ordinary", "organ", "orient", "original", "orphan", "ostrich", "other", "outdoor", "outer", "output", "outside", "oval", "oven", "over", "own", "owner", "oxygen", "oyster", "ozone", "pact", "paddle", "page", "pair", "palace", "palm", "panda", "panel", "panic", "panther", "paper", "parade", "parent", "park", "parrot", "party", "pass", "patch", "path", "patient", "patrol", "pattern", "pause", "pave", "payment", "peace", "peanut", "pear", "peasant", "pelican", "pen", "penalty", "pencil", "people", "pepper", "perfect", "permit", "person", "pet", "phone", "photo", "phrase", "physical", "piano", "picnic", "picture", "piece", "pig", "pigeon", "pill", "pilot", "pink", "pioneer", "pipe", "pistol", "pitch", "pizza", "place", "planet", "plastic", "plate", "play", "please", "pledge", "pluck", "plug", "plunge", "poem", "poet", "point", "polar", "pole", "police", "pond", "pony", "pool", "popular", "portion", "position", "possible", "post", "potato", "pottery", "poverty", "powder", "power", "practice", "praise", "predict", "prefer", "prepare", "present", "pretty", "prevent", "price", "pride", "primary", "print", "priority", "prison", "private", "prize", "problem", "process", "produce", "profit", "program", "project", "promote", "proof", "property", "prosper", "protect", "proud", "provide", "public", "pudding", "pull", "pulp", "pulse", "pumpkin", "punch", "pupil", "puppy", "purchase", "purity", "purpose", "purse", "push", "put", "puzzle", "pyramid", "quality", "quantum", "quarter", "question", "quick", "quit", "quiz", "quote", "rabbit", "raccoon", "race", "rack", "radar", "radio", "rail", "rain", "raise", "rally", "ramp", "ranch", "random", "range", "rapid", "rare", "rate", "rather", "raven", "raw", "razor", "ready", "real", "reason", "rebel", "rebuild", "recall", "receive", "recipe", "record", "recycle", "reduce", "reflect", "reform", "refuse", "region", "regret", "regular", "reject", "relax", "release", "relief", "rely", "remain", "remember", "remind", "remove", "render", "renew", "rent", "reopen", "repair", "repeat", "replace", "report", "require", "rescue", "resemble", "resist", "resource", "response", "result", "retire", "retreat", "return", "reunion", "reveal", "review", "reward", "rhythm", "rib", "ribbon", "rice", "rich", "ride", "ridge", "rifle", "right", "rigid", "ring", "riot", "ripple", "risk", "ritual", "rival", "river", "road", "roast", "robot", "robust", "rocket", "romance", "roof", "rookie", "room", "rose", "rotate", "rough", "round", "route", "royal", "rubber", "rude", "rug", "rule", "run", "runway", "rural", "sad", "saddle", "sadness", "safe", "sail", "salad", "salmon", "salon", "salt", "salute", "same", "sample", "sand", "satisfy", "satoshi", "sauce", "sausage", "save", "say", "scale", "scan", "scare", "scatter", "scene", "scheme", "school", "science", "scissors", "scorpion", "scout", "scrap", "screen", "script", "scrub", "sea", "search", "season", "seat", "second", "secret", "section", "security", "seed", "seek", "segment", "select", "sell", "seminar", "senior", "sense", "sentence", "series", "service", "session", "settle", "setup", "seven", "shadow", "shaft", "shallow", "share", "shed", "shell", "sheriff", "shield", "shift", "shine", "ship", "shiver", "shock", "shoe", "shoot", "shop", "short", "shoulder", "shove", "shrimp", "shrug", "shuffle", "shy", "sibling", "sick", "side", "siege", "sight", "sign", "silent", "silk", "silly", "silver", "similar", "simple", "since", "sing", "siren", "sister", "situate", "six", "size", "skate", "sketch", "ski", "skill", "skin", "skirt", "skull", "slab", "slam", "sleep", "slender", "slice", "slide", "slight", "slim", "slogan", "slot", "slow", "slush", "small", "smart", "smile", "smoke", "smooth", "snack", "snake", "snap", "sniff", "snow", "soap", "soccer", "social", "sock", "soda", "soft", "solar", "soldier", "solid", "solution", "solve", "someone", "song", "soon", "sorry", "sort", "soul", "sound", "soup", "source", "south", "space", "spare", "spatial", "spawn", "speak", "special", "speed", "spell", "spend", "sphere", "spice", "spider", "spike", "spin", "spirit", "split", "spoil", "sponsor", "spoon", "sport", "spot", "spray", "spread", "spring", "spy", "square", "squeeze", "squirrel", "stable", "stadium", "staff", "stage", "stairs", "stamp", "stand", "start", "state", "stay", "steak", "steel", "stem", "step", "stereo", "stick", "still", "sting", "stock", "stomach", "stone", "stool", "story", "stove", "strategy", "street", "strike", "strong", "struggle", "student", "stuff", "stumble", "style", "subject", "submit", "subway", "success", "such", "sudden", "suffer", "sugar", "suggest", "suit", "summer", "sun", "sunny", "sunset", "super", "supply", "supreme", "sure", "surface", "surge", "surprise", "surround", "survey", "suspect", "sustain", "swallow", "swamp", "swap", "swarm", "swear", "sweet", "swift", "swim", "swing", "switch", "sword", "symbol", "symptom", "syrup", "system", "table", "tackle", "tag", "tail", "talent", "talk", "tank", "tape", "target", "task", "taste", "tattoo", "taxi", "teach", "team", "tell", "ten", "tenant", "tennis", "tent", "term", "test", "text", "thank", "that", "theme", "then", "theory", "there", "they", "thing", "this", "thought", "three", "thrive", "throw", "thumb", "thunder", "ticket", "tide", "tiger", "tilt", "timber", "time", "tiny", "tip", "tired", "tissue", "title", "toast", "tobacco", "today", "toddler", "toe", "together", "toilet", "token", "tomato", "tomorrow", "tone", "tongue", "tonight", "tool", "tooth", "top", "topic", "topple", "torch", "tornado", "tortoise", "toss", "total", "tourist", "toward", "tower", "town", "toy", "track", "trade", "traffic", "tragic", "train", "transfer", "trap", "trash", "travel", "tray", "treat", "tree", "trend", "trial", "tribe", "trick", "trigger", "trim", "trip", "trophy", "trouble", "truck", "true", "truly", "trumpet", "trust", "truth", "try", "tube", "tuition", "tumble", "tuna", "tunnel", "turkey", "turn", "turtle", "twelve", "twenty", "twice", "twin", "twist", "two", "type", "typical", "ugly", "umbrella", "unable", "unaware", "uncle", "uncover", "under", "undo", "unfair", "unfold", "unhappy", "uniform", "unique", "unit", "universe", "unknown", "unlock", "until", "unusual", "unveil", "update", "upgrade", "uphold", "upon", "upper", "upset", "urban", "urge", "usage", "use", "used", "useful", "useless", "usual", "utility", "vacant", "vacuum", "vague", "valid", "valley", "valve", "van", "vanish", "vapor", "various", "vast", "vault", "vehicle", "velvet", "vendor", "venture", "venue", "verb", "verify", "version", "very", "vessel", "veteran", "viable", "vibrant", "vicious", "victory", "video", "view", "village", "vintage", "violin", "virtual", "virus", "visa", "visit", "visual", "vital", "vivid", "vocal", "voice", "void", "volcano", "volume", "vote", "voyage", "wage", "wagon", "wait", "walk", "wall", "walnut", "want", "warfare", "warm", "warrior", "wash", "wasp", "waste", "water", "wave", "way", "wealth", "weapon", "wear", "weasel", "weather", "web", "wedding", "weekend", "weird", "welcome", "west", "wet", "whale", "what", "wheat", "wheel", "when", "where", "whip", "whisper", "wide", "width", "wife", "wild", "will", "win", "window", "wine", "wing", "wink", "winner", "winter", "wire", "wisdom", "wise", "wish", "witness", "wolf", "woman", "wonder", "wood", "wool", "word", "work", "world", "worry", "worth", "wrap", "wreck", "wrestle", "wrist", "write", "wrong", "yard", "year", "yellow", "you", "young", "youth", "zebra", "zero", "zone", "zoo"];
+
+/* SHA-256: byte array in, 32 byte array out. */
+function sha256(data){
+  function rotr(x,n){ return (x>>>n)|(x<<(32-n)); }
+  var K=[0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,
+  0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,
+  0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,
+  0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,
+  0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,
+  0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,0x106aa070,
+  0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,
+  0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2];
+  var H=[0x6a09e667,0xbb67ae85,0x3c6ef372,0xa54ff53a,0x510e527f,0x9b05688c,0x1f83d9ab,0x5be0cd19];
+  var bytes=Array.prototype.slice.call(data);
+  var bitLen=bytes.length*8;
+  bytes.push(0x80);
+  while(bytes.length%64!==56) bytes.push(0);
+  var hi=Math.floor(bitLen/4294967296), lo=bitLen>>>0;
+  bytes.push((hi>>>24)&255,(hi>>>16)&255,(hi>>>8)&255,hi&255,
+             (lo>>>24)&255,(lo>>>16)&255,(lo>>>8)&255,lo&255);
+  var w=new Array(64), i, b;
+  for(b=0;b<bytes.length;b+=64){
+    for(i=0;i<16;i++) w[i]=((bytes[b+i*4]<<24)|(bytes[b+i*4+1]<<16)|(bytes[b+i*4+2]<<8)|bytes[b+i*4+3])>>>0;
+    for(i=16;i<64;i++){
+      var s0=(rotr(w[i-15],7)^rotr(w[i-15],18)^(w[i-15]>>>3))>>>0;
+      var s1=(rotr(w[i-2],17)^rotr(w[i-2],19)^(w[i-2]>>>10))>>>0;
+      w[i]=(w[i-16]+s0+w[i-7]+s1)>>>0;
+    }
+    var a=H[0],bb=H[1],c=H[2],d=H[3],e=H[4],f=H[5],g=H[6],h=H[7];
+    for(i=0;i<64;i++){
+      var S1=(rotr(e,6)^rotr(e,11)^rotr(e,25))>>>0;
+      var ch=((e&f)^(~e&g))>>>0;
+      var t1=(h+S1+ch+K[i]+w[i])>>>0;
+      var S0=(rotr(a,2)^rotr(a,13)^rotr(a,22))>>>0;
+      var maj=((a&bb)^(a&c)^(bb&c))>>>0;
+      var t2=(S0+maj)>>>0;
+      h=g;g=f;f=e;e=(d+t1)>>>0;d=c;c=bb;bb=a;a=(t1+t2)>>>0;
+    }
+    H[0]=(H[0]+a)>>>0;H[1]=(H[1]+bb)>>>0;H[2]=(H[2]+c)>>>0;H[3]=(H[3]+d)>>>0;
+    H[4]=(H[4]+e)>>>0;H[5]=(H[5]+f)>>>0;H[6]=(H[6]+g)>>>0;H[7]=(H[7]+h)>>>0;
+  }
+  var out=[];
+  for(i=0;i<8;i++) out.push((H[i]>>>24)&255,(H[i]>>>16)&255,(H[i]>>>8)&255,H[i]&255);
+  return out;
+}
+
+function bytesToBits(bytes){
+  var s='';
+  for(var i=0;i<bytes.length;i++) s+=bytes[i].toString(2).padStart(8,'0');
+  return s;
+}
+/* Mirror the Python tool: pad left with zeros to a whole number of bytes. */
+function bitsToBytes(bitstr){
+  var s=bitstr;
+  var r=s.length%8;
+  if(r!==0) s='0'.repeat(8-r)+s;
+  var out=[];
+  for(var i=0;i<s.length;i+=8) out.push(parseInt(s.slice(i,i+8),2));
+  return out;
+}
+function cleanBinary(s){
+  return (s||'').replace(/[^01]/g,'');
+}
+/* The guide's face map: 1=00 2=01 3=10 4=11. 5 and 6 are not bits. */
+function faceToBits(face){
+  return {1:'00',2:'01',3:'10',4:'11'}[face] || null;
+}
+/* 256 bits of entropy -> 24 words. Checksum is the first 8 bits of SHA-256(entropy). */
+function bitsToWords(bits256){
+  var entropyBytes=bitsToBytes(bits256);
+  var checkBits=bytesToBits(sha256(entropyBytes)).slice(0,8);
+  var full=bits256+checkBits;
+  var words=[];
+  for(var i=0;i<24;i++) words.push(WORDLIST[parseInt(full.slice(i*11,(i+1)*11),2)]);
+  return words;
+}
+/* Accept 256 bits or more, like the Python tool. Longer input is hashed down. */
+function wordsFromBitsInput(raw){
+  var bits=cleanBinary(raw);
+  var note='';
+  if(bits.length<256) return {words:null, note:'Need 256 bits. Pasted text holds '+bits.length+'.'};
+  if(bits.length>256){
+    bits=bytesToBits(sha256(bitsToBytes(bits)));
+    note='Pasted '+cleanBinary(raw).length+' bits. Hashed down to 256, like the Python tool.';
+  }
+  return {words:bitsToWords(bits), note:note, bits:bits};
+}
+/* Validate a 24 word list: word list membership plus the checksum. */
+function validateWords(arr){
+  var words=(arr||[]).map(function(w){return (w||'').toLowerCase();}).filter(function(w){return w.length>0;});
+  if(words.length!==24) return {ok:false, reason:'Need 24 words. Found '+words.length+'.'};
+  var bad=[];
+  for(var i=0;i<24;i++) if(WORDLIST.indexOf(words[i])<0) bad.push(i+1);
+  if(bad.length) return {ok:false, reason:'Not in the word list, positions: '+bad.join(', ')+'.'};
+  var bits='';
+  for(i=0;i<24;i++) bits+=WORDLIST.indexOf(words[i]).toString(2).padStart(11,'0');
+  var expect=bytesToBits(sha256(bitsToBytes(bits.slice(0,256)))).slice(0,8);
+  if(expect!==bits.slice(256)) return {ok:false, reason:'The check word does not match the other 23. One of the words is wrong.'};
+  return {ok:true, reason:'All 24 words are in the list and the check word passes.'};
+}
+/* Word by word compare of two lists. The guide's "two tools must agree" step. */
+function compareLists(aWords,bWords){
+  var a=(aWords||[]).map(function(w){return (w||'').toLowerCase();}).filter(function(w){return w.length>0;});
+  var b=(bWords||[]).map(function(w){return (w||'').toLowerCase();}).filter(function(w){return w.length>0;});
+  if(a.length!==24||b.length!==24) return {ok:false, mismatches:[], reason:'Both lists need 24 words.'};
+  var mismatches=[];
+  for(var i=0;i<24;i++) if(a[i]!==b[i]) mismatches.push(i+1);
+  return {ok:mismatches.length===0, mismatches:mismatches,
+    reason:mismatches.length===0?'24 of 24 match.':'Differ at positions: '+mismatches.join(', ')+'.'};
+}
+if(typeof module!=='undefined') module.exports={sha256:sha256,bytesToBits:bytesToBits,bitsToBytes:bitsToBytes,cleanBinary:cleanBinary,faceToBits:faceToBits,bitsToWords:bitsToWords,wordsFromBitsInput:wordsFromBitsInput,validateWords:validateWords,compareLists:compareLists,WORDLIST:WORDLIST};
+
+</script>
+<script>
+(function(){
+  "use strict";
+  var rolls=[]; // {face, bits|null}
+  var pastedBits=null;
+  function $(id){return document.getElementById(id);}
+  function bits(){return rolls.filter(function(r){return r.bits;}).map(function(r){return r.bits;}).join('');}
+  function pairs(){return rolls.filter(function(r){return r.bits;}).length;}
+
+  function render(){
+    var b=bits(), p=pairs();
+    $('m-pairs').textContent=p;
+    $('m-bits').textContent=b.length;
+    $('barfill').style.width=(b.length/256*100)+'%';
+    var strip=$('strip'); strip.innerHTML='';
+    rolls.forEach(function(r){
+      var t=document.createElement('div');
+      t.className='tile'+(r.bits?'':' skip');
+      var f=document.createElement('span'); f.className='face'; f.textContent=r.face;
+      var tb=document.createElement('span'); tb.className='tb'; tb.textContent=r.bits||'skip';
+      t.appendChild(f); t.appendChild(tb); strip.appendChild(t);
+    });
+    var grouped='';
+    for(var i=0;i<b.length;i+=8) grouped+=b.slice(i,i+8)+' ';
+    $('bits').textContent=grouped.trim();
+    var done=b.length>=256;
+    $('done256').hidden=!done;
+    if(done && !pastedBits) showWords(bitsToWords(b));
+  }
+  function showWords(words){
+    var ol=$('words'); ol.innerHTML='';
+    words.forEach(function(w,i){
+      var li=document.createElement('li');
+      li.style.animationDelay=(i*0.045)+'s';
+      var n=document.createElement('span'); n.className='n'; n.textContent=(i+1);
+      li.appendChild(n);
+      li.appendChild(document.createTextNode(w));
+      if(i===23){ li.className='check'; var tag=document.createElement('span'); tag.className='tag'; tag.textContent='check'; li.appendChild(tag); }
+      ol.appendChild(li);
+    });
+  }
+  function addDie(face){
+    if(netBlocked) return;
+    if(bits().length>=256 && !pastedBits) return;
+    if(pastedBits){ clearAll(); }
+    rolls.push({face:face, bits:faceToBits(face)});
+    render();
+  }
+  function clearAll(){
+    rolls=[]; pastedBits=null;
+    $('words').innerHTML=''; $('pastebits').value=''; $('paste-note').textContent='';
+    render();
+  }
+  document.querySelectorAll('.diebtn').forEach(function(btn){
+    btn.addEventListener('click', function(){ addDie(parseInt(btn.getAttribute('data-face'),10)); });
+  });
+  document.addEventListener('keydown', function(e){
+    if(netBlocked) return;
+    if(/INPUT|TEXTAREA/.test(document.activeElement.tagName)) return;
+    if(e.key>='1'&&e.key<='6') addDie(parseInt(e.key,10));
+    else if(e.key==='Backspace'){ rolls.pop(); render(); e.preventDefault(); }
+  });
+  $('undo').addEventListener('click', function(){ rolls.pop(); render(); });
+  $('clear').addEventListener('click', clearAll);
+  $('testfill').addEventListener('click', function(){
+    clearAll();
+    var seed=123456789;
+    function rnd(){ seed=(seed*1103515245+12345)&0x7fffffff; return seed/0x7fffffff; }
+    while(bits().length<256){
+      var f=1+Math.floor(rnd()*4);
+      rolls.push({face:f, bits:faceToBits(f)});
+    }
+    render();
+  });
+  var pasteT=null;
+  $('pastebits').addEventListener('input', function(){
+    clearTimeout(pasteT);
+    pasteT=setTimeout(function(){
+      var raw=$('pastebits').value;
+      var r=wordsFromBitsInput(raw);
+      var note=$('paste-note');
+      if(!r.words){ pastedBits=null; $('words').innerHTML=''; note.textContent=r.note; return; }
+      pastedBits=r.bits;
+      note.textContent=r.note||('256 bits. Words generated.');
+      showWords(r.words);
+    },350);
+  });
+  $('validate').addEventListener('click', function(){
+    if(netBlocked) return;
+    var raw=$('valwords').value.trim().split(/\s+/).filter(function(w){return w.length;});
+    var ul=$('results'); ul.innerHTML='';
+    function li(cls,text,delay){
+      var el=document.createElement('li'); el.className=cls; el.textContent=text;
+      el.style.animationDelay=delay+'s'; ul.appendChild(el);
+    }
+    if(raw.length!==24){ li('bad','Need 24 words. Found '+raw.length+'.',0); return; }
+    var v=validateWords(raw);
+    li(v.ok?'good':'bad', v.ok?'Check passes. All 24 words are in the list and word 24 matches the other 23.':'Check fails. '+v.reason, 0);
+    if(!v.ok) return;
+    var mine=null;
+    if(pastedBits) mine=bitsToWords(pastedBits);
+    else if(bits().length>=256) mine=bitsToWords(bits());
+    if(mine){
+      var c=compareLists(mine, raw);
+      li(c.ok?'good':'bad', c.ok?'24 of 24 match the words above. The two tools agree.':'The lists differ at positions: '+c.mismatches.join(', ')+'. Stop here.', .18);
+    } else {
+      li('good','No words recorded above to compare against. This list stands on its own check.', .18);
+    }
+  });
+  netBlocked=true; // fail closed until the probe confirms offline
+  function probeOnline(){
+    return new Promise(function(resolve){
+      var urls=[
+        'https://www.google.com/favicon.ico',
+        'https://www.gstatic.com/favicon.ico'
+      ];
+      var pending=urls.length, settled=false;
+      function finish(online){ if(settled) return; settled=true; resolve(online); }
+      var timer=setTimeout(function(){ finish(false); },5000);
+      urls.forEach(function(base){
+        var img=new Image();
+        img.onload=function(){ clearTimeout(timer); finish(true); };
+        img.onerror=function(){ pending--; if(pending<=0){ clearTimeout(timer); finish(false); } };
+        img.src=base+'?_='+Date.now();
+      });
+    });
+  }
+  async function renderNet(){
+    var pill=$('online-pill'), dot=$('online-dot'), word=$('online-word'), block=$('netblock');
+    if(pill){ pill.hidden=false; dot.classList.remove('safe'); word.textContent='Checking\u2026'; }
+    if(block){ block.hidden=false; }
+    var online;
+    if(navigator.onLine===true){ online=true; }
+    else { online=await probeOnline(); }
+    var wasBlocked=netBlocked;
+    netBlocked=online;
+    if(pill){ dot.classList.toggle('safe', !online); word.textContent=online?'Online':'Offline'; }
+    if(block){ block.hidden=!online; }
+    if(online && !wasBlocked){
+      clearAll();
+      $('valwords').value='';
+      $('results').innerHTML='';
+    }
+  }
+  window.addEventListener('online', renderNet);
+  window.addEventListener('offline', renderNet);
+  renderNet();
+  render();
+})();
+</script>
+</body>
+</html>
